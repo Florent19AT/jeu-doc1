@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quiz CDI – Univers fantastique</title>
+  <style>
+    body{font-family:"Trebuchet MS",sans-serif;background:#f8f4ff;margin:0;padding:20px;color:#2c1b47}
+    .screen{max-width:700px;margin:auto;background:#fff;border-radius:16px;padding:20px;box-shadow:0 4px 12px rgba(0,0,0,.15);text-align:center}
+    .question{font-size:26px;font-weight:bold;margin:20px 0}
+    .answers{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .answer{padding:12px;border-radius:10px;border:2px solid #d0c0f0;background:#fafaff;font-size:18px;cursor:pointer;transition:.15s}
+    .answer:hover{transform:scale(1.03)}
+    .correct{background:#d6f8d6!important;border-color:#6bcf6b!important}
+    .wrong{background:#ffdede!important;border-color:#e07070!important}
+    .hud{display:flex;justify-content:space-between;align-items:center;margin:10px 0;gap:10px}
+    .bar{flex:1;background:#eee;height:12px;border-radius:6px;overflow:hidden}
+    .bar div{background:linear-gradient(90deg,#f7c66b,#6b9bf7);height:100%;transition:width .1s}
+    .btn{padding:10px 16px;border:none;border-radius:8px;background:#6b4bbf;color:#fff;cursor:pointer;box-shadow:0 3px #463070;font-size:16px}
+    .btn:hover{transform:translateY(-1px)}
+    svg{max-width:120px;margin:20px auto;display:block}
+    #musicToggle{background:#eee;color:#333;margin-top:10px}
+  </style>
+</head>
+<body>
+  <!-- Écran d’accueil -->
+  <div class="screen" id="start">
+    <svg viewBox="0 0 100 100">
+      <rect x="20" y="60" width="60" height="10" fill="#c49bd2"/>
+      <rect x="25" y="50" width="50" height="10" fill="#9bbcd2"/>
+      <rect x="30" y="40" width="40" height="10" fill="#d2c49b"/>
+      <rect x="35" y="30" width="30" height="10" fill="#bcd29b"/>
+      <rect x="65" y="15" width="20" height="12" fill="#888"/> <!-- ordi -->
+      <rect x="70" y="10" width="10" height="5" fill="#555"/>
+      <circle cx="20" cy="25" r="6" fill="#f2c94c"/> <!-- dé -->
+      <circle cx="20" cy="25" r="1.5" fill="#333"/>
+      <circle cx="18" cy="23" r="1.5" fill="#333"/>
+      <circle cx="22" cy="27" r="1.5" fill="#333"/>
+    </svg>
+    <h2>📚 Bienvenue au CDI fantastique !</h2>
+    <p>Teste tes connaissances sur les règles, outils et astuces du CDI.<br>
+    Tu as deux essais, et à la 3ᵉ erreur la réponse est révélée.</p>
+    <button class="btn" onclick="startGame()">🚀 Commencer le quiz</button>
+    <br>
+    <button id="musicToggle" onclick="toggleMusic()">🎵 Musique On/Off</button>
+  </div>
+
+  <!-- Écran de jeu -->
+  <div class="screen" id="game" style="display:none">
+    <div class="hud">
+      <div id="score">Score: 0</div>
+      <div class="bar"><div id="timeBar" style="width:100%"></div></div>
+      <div id="progress"></div>
+    </div>
+    <div class="question" id="question"></div>
+    <div class="answers" id="answers"></div>
+  </div>
+
+  <!-- Écran de fin -->
+  <div class="screen" id="end" style="display:none">
+    <h2>✨ Fin du Quiz</h2>
+    <p id="final"></p>
+    <pre id="recap" style="text-align:left;white-space:pre-wrap;background:#fafaff;padding:10px;border-radius:8px"></pre>
+    <button class="btn" onclick="downloadTxt()">📄 Télécharger résultats</button>
+    <button class="btn" onclick="location.reload()">🔄 Rejouer</button>
+  </div>
+
+  <!-- Sons -->
+  <audio id="music" loop src="https://cdn.pixabay.com/download/audio/2021/11/30/audio_cdd4f3f62e.mp3?filename=fantasy-game-background-loop-110624.mp3"></audio>
+  <audio id="sndGood" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+  <audio id="sndBad" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+  <audio id="sndEnd" src="https://actions.google.com/sounds/v1/cartoon/descending_whistle.ogg"></audio>
+
+  <script>
+    const questions=[
+      {q:"Quel numéro Dewey correspond aux sciences sociales ?",a:["300","500","700","900"],c:"300"},
+      {q:"Où ranger un roman de fiction au CDI ?",a:["R + 3 lettres de l’auteur","FIC","ROM","FICTION"],c:"R + 3 lettres de l’auteur"},
+      {q:"Quel outil en ligne permet de rechercher les documents du CDI ?",a:["Google","Pronote","e-sidoc","Wikipedia"],c:"e-sidoc"},
+      {q:"Que doit-on faire avant d’entrer au CDI ?",a:["Saluer, poser son sac, noter son nom","Allumer son téléphone","Manger un goûter","Aller directement à l’ordi"],c:"Saluer, poser son sac, noter son nom"},
+      {q:"Quelle cote Dewey correspond aux sciences ?",a:["000","200","500","800"],c:"500"},
+      {q:"Que signifie EMI ?",a:["Éducation aux Médias et à l’Information","École des Mathématiques Internationales","Examen de Moyenne Interne","Enseignement Musical Intensif"],c:"Éducation aux Médias et à l’Information"},
+      {q:"Comment est cotée une bande dessinée ?",a:["BD + 3 lettres de l’auteur","R + titre","DESSIN","BDE"],c:"BD + 3 lettres de l’auteur"},
+      {q:"Que ne doit-on PAS faire au CDI ?",a:["Respecter le silence","Détourner les logiciels","Lire tranquillement","Demander un conseil"],c:"Détourner les logiciels"},
+      {q:"Quelle cote Dewey correspond aux arts ?",a:["600","700","800","900"],c:"700"},
+      {q:"Dans e-sidoc, que peut-on trouver ?",a:["Seulement des mangas","Des notices de documents, infos, actus du CDI","Des jeux vidéo à télécharger","Des recettes de cuisine"],c:"Des notices de documents, infos, actus du CDI"}
+    ];
+
+    let idx=0,score=0,tries=0,log=[],timer,limit=15;
+    const qDiv=document.getElementById("question");
+    const aDiv=document.getElementById("answers");
+    const sDiv=document.getElementById("score");
+    const pDiv=document.getElementById("progress");
+    const bar=document.getElementById("timeBar");
+
+    function startGame(){
+      document.getElementById("start").style.display="none";
+      document.getElementById("game").style.display="block";
+      idx=0;score=0;log=[];next();
+      document.getElementById("music").play().catch(()=>{}); // démarrage musique
+    }
+
+    function next(){
+      if(idx>=questions.length){end();return;}
+      const q=questions[idx];
+      qDiv.textContent=q.q;
+      aDiv.innerHTML="";
+      q.a.forEach(ans=>{
+        let b=document.createElement("button");
+        b.className="answer";b.textContent=ans;
+        b.onclick=()=>choose(ans,q.c,b);
+        aDiv.appendChild(b);
+      });
+      sDiv.textContent="Score: "+score;
+      pDiv.textContent=`${idx+1}/${questions.length}`;
+      tries=0;startTimer();
+    }
+
+    function choose(val,correct,btn){
+      clearInterval(timer);
+      if(val===correct){score+=2;btn.classList.add("correct");document.getElementById("sndGood").play();log.push(`${questions[idx].q}\\nVotre réponse: ${val} ✅`);setTimeout(()=>{idx++;next();},700);}
+      else{score--;btn.classList.add("wrong");document.getElementById("sndBad").play();tries++;if(tries>=2){log.push(`${questions[idx].q}\\nVotre réponse: ${val} ❌ (Bonne réponse: ${correct})`);setTimeout(()=>{idx++;next();},700);}else{setTimeout(()=>{next();},700);}}
+      sDiv.textContent="Score: "+score;
+    }
+
+    function startTimer(){let t=limit;bar.style.width="100%";clearInterval(timer);timer=setInterval(()=>{t-=0.1;bar.style.width=(t/limit*100)+"%";if(t<=0){clearInterval(timer);score--;log.push(`${questions[idx].q}\\nTemps écoulé ❌ (Bonne réponse: ${questions[idx].c})`);idx++;next();}},100);}
+
+    function end(){
+      document.getElementById("game").style.display="none";
+      document.getElementById("end").style.display="block";
+      document.getElementById("final").textContent=`Score final: ${score}`;
+      document.getElementById("recap").textContent=log.join("\\n\\n");
+      document.getElementById("sndEnd").play();
+    }
+
+    function downloadTxt(){
+      let text=`Score final: ${score}\\n\\n`+log.join("\\n\\n");
+      let blob=new Blob([text],{type:"text/plain"});
+      let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="resultats_quiz_CDI.txt";a.click();
+    }
+
+    function toggleMusic(){
+      const music=document.getElementById("music");
+      if(music.paused){music.play();}else{music.pause();}
+    }
+  </script>
+</body>
+</html>
